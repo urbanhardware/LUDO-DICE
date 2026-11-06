@@ -46,24 +46,30 @@ function draw(){
  for(let i=0;i<6;i++){[[7,1+i,'blue'],[1+i,7,'red'],[7,13-i,'yellow'],[13-i,7,'green']].forEach(([r,c,k])=>{let e=cell(r,c,k);e.style.border='1px solid #fff'})}
  renderTokens();
 }
-function renderTokens(){
- document.querySelectorAll('.token').forEach(e=>e.remove());
- states.forEach((arr,p)=>arr.forEach((pos,t)=>{
- let r,c;if(pos<0){let bases=[[2,2],[2,11],[11,11],[11,2]][p];r=bases[0]+(t>>1)*2;c=bases[1]+(t%2)*2}
- else {let idx=(starts[p]+pos)%52;[r,c]=path[idx]}
- let target=[...board.children].find(e=>e.classList.contains('cell')&&+e.dataset.path===((pos<0)?-999:(starts[p]+pos)%52));
- if(pos>=0&&target){let el=document.createElement('button');el.className='token '+colors[p];el.title=names[p]+' token '+(t+1);el.onclick=()=>move(p,t);target.append(el)}
- else if(pos<0){let base=document.querySelectorAll('.home')[p];let el=document.createElement('button');el.className='token '+colors[p];el.onclick=()=>move(p,t);let dots=base.querySelectorAll('.dot');dots[t].replaceWith(el)}
- }));
+function renderTokens() {
+  document.querySelectorAll('.token').forEach(e => e.remove());
+
+  states.forEach((arr, p) => {
+    arr.forEach((pos, t) => {
+      let el = document.createElement('button');
+      el.className = 'token ' + colors[p];
+      el.title = names[p] + ' token ' + (t + 1);
+      el.onclick = () => move(p, t);
+
+      if (pos < 0) {
+        let home = document.querySelectorAll('.home')[p];
+        let dots = home.querySelectorAll('.dot');
+        dots[t].appendChild(el);
+      } else {
+        let idx = (starts[p] + pos) % 52;
+        let target = [...board.children].find(
+          e => e.dataset.path == idx
+        );
+
+        if (target) {
+          target.appendChild(el);
+        }
+      }
+    });
+  });
 }
-function say(s){document.getElementById('log').textContent=s}
-function update(){document.getElementById('turn').textContent=names[turn]+"'s turn";document.getElementById('hint').textContent=rolled?`Dice: ${dice}. Apne highlighted player ke token par tap karein.`:'Dice roll karein.';document.getElementById('roll').disabled=rolled}
-document.getElementById('roll').onclick=()=>{if(rolled)return;dice=1+Math.floor(Math.random()*6);rolled=true;say(names[turn]+' rolled '+dice);update();let movable=states[turn].some(x=>x<0?dice===6:x+dice<=57);if(!movable){say('Koi legal move nahi. Turn skip.');setTimeout(next,700)}};
-function move(p,t){if(p!==turn||!rolled)return;let old=states[p][t];if(old<0&&dice!==6)return say('Token nikalne ke liye 6 chahiye.');if(old>=0&&old+dice>57)return say('Is token ko exact number chahiye.');states[p][t]=old<0?0:old+dice;
- if(states[p][t]<57){let idx=(starts[p]+states[p][t])%52;if(!safe.includes(idx)){states.forEach((a,op)=>{if(op!==p)a.forEach((v,j)=>{if(v>=0&&v<52&&(starts[op]+v)%52===idx)states[op][j]=-1})})}}
- renderTokens();if(states[p].every(x=>x===57)){say(names[p]+' wins! 🏆');rolled=false;document.getElementById('hint').textContent='Winner! New Game dabayein.';return}
- if(dice!==6)next();else{rolled=false;say('6 mila! Extra turn.');update()}
-}
-function next(){rolled=false;turn=(turn+1)%count;while(turn>=count)turn=(turn+1)%count;update()}
-document.getElementById('new').onclick=reset;document.getElementById('mode').onclick=()=>alert('Online multiplayer ke liye server/room system agle phase mein add hoga.');reset();
-</script></body></html>
