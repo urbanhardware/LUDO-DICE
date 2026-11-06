@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#111827"><title>LUDO DICEORA</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#101827;color:#fff;font-family:system-ui,Arial;display:flex;justify-content:center;min-height:100vh}
+.app{width:min(100%,560px);padding:16px;display:flex;flex-direction:column;gap:12px}.top{text-align:center}.top h1{margin:4px 0;color:#facc15;letter-spacing:2px}.top p{margin:0;color:#aebbd0;font-size:13px}
+.panel{background:#1d2a40;border:1px solid #35445d;border-radius:16px;padding:12px}
+.setup{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:center}.setup label{font-size:13px;color:#cbd5e1}.setup select,.setup button,.dice{border:0;border-radius:10px;padding:10px 12px;font-weight:700}
+button{cursor:pointer}.primary{background:#facc15;color:#171717}.secondary{background:#334155;color:white}
+.board{width:100%;aspect-ratio:1;background:#e5e7eb;border:5px solid #d1d5db;border-radius:12px;display:grid;grid-template-columns:repeat(15,1fr);grid-template-rows:repeat(15,1fr);overflow:hidden;position:relative}
+.cell{border:1px solid #cbd5e1;position:relative;display:flex;align-items:center;justify-content:center}
+.red{background:#ef4444}.green{background:#22c55e}.yellow{background:#facc15}.blue{background:#3b82f6}
+.home{margin:3px;border:2px solid #fff;border-radius:8px;display:grid;grid-template-columns:1fr 1fr;gap:5px;padding:8px}
+.dot{width:72%;aspect-ratio:1;border-radius:50%;background:#fff;border:2px solid #475569;box-shadow:inset 0 0 0 4px #cbd5e1;cursor:pointer;z-index:2}
+.token{width:78%;aspect-ratio:1;border-radius:50%;border:2px solid white;box-shadow:0 2px 4px #1118;cursor:pointer;z-index:5}
+.token.red{background:#b91c1c}.token.green{background:#15803d}.token.yellow{background:#ca8a04}.token.blue{background:#1d4ed8}
+.center{background:conic-gradient(#ef4444 0 25%,#22c55e 0 50%,#3b82f6 0 75%,#facc15 0);border:2px solid white}
+.status{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}.turn{font-weight:800}.dice{font-size:25px;background:white;color:#111;min-width:58px;min-height:54px}.hint{font-size:13px;color:#cbd5e1;line-height:1.5}.log{font-size:13px;color:#dbeafe;min-height:20px}
+@media(max-width:380px){.app{padding:8px}.panel{padding:8px}.board{border-width:3px}}
+</style></head>
+<body><main class="app">
+<header class="top"><h1>🎲 LUDO DICEORA</h1><p>Roll • Move • Win — Local pass-and-play prototype</p></header>
+<section class="panel setup"><label>Players</label><select id="players"><option value="2">2 Players</option><option value="3">3 Players</option><option value="4" selected>4 Players</option></select><button class="primary" id="new">New Game</button><button class="secondary" id="mode">Online: Coming soon</button></section>
+<section class="board" id="board" aria-label="Ludo board"></section>
+<section class="panel status"><div><div class="turn" id="turn">Red's turn</div><div class="hint" id="hint">Dice roll karein.</div></div><button class="dice" id="roll">🎲</button></section>
+<section class="panel"><div class="hint">Rules: Ghar se token nikalne ke liye 6 chahiye. 6 par extra turn. Apne token par tap karke move karein. Pehla prototype local same-device play ke liye hai.</div><div class="log" id="log">Game ready.</div></section>
+</main>
+<script>
+const colors=['red','green','yellow','blue'], names=['Red','Green','Yellow','Blue'];
+const path=[[6,1],[6,2],[6,3],[6,4],[6,5],[5,6],[4,6],[3,6],[2,6],[1,6],[0,6],[0,7],[0,8],[1,8],[2,8],[3,8],[4,8],[5,8],[6,9],[6,10],[6,11],[6,12],[6,13],[6,14],[7,14],[8,14],[8,13],[8,12],[8,11],[8,10],[8,9],[9,8],[10,8],[11,8],[12,8],[13,8],[14,8],[14,7],[14,6],[13,6],[12,6],[11,6],[10,6],[9,6],[8,5],[8,4],[8,3],[8,2],[8,1],[8,0],[7,0],[6,0]];
+const starts=[0,13,26,39], safe=[0,8,13,21,26,34,39,47];
+let count=4,turn=0,dice=0,rolled=false,states=[];
+const board=document.getElementById('board');
+function reset(){count=+document.getElementById('players').value;turn=0;dice=0;rolled=false;states=colors.map(()=>Array(4).fill(-1));draw();say('Naya game shuru!');update()}
+function cell(r,c,cls=''){let e=document.createElement('div');e.className='cell '+cls;e.style.gridRow=r+1;e.style.gridColumn=c+1;board.append(e);return e}
+function draw(){
+ board.innerHTML='';
+ // colored home bases
+ [[0,0,'red'],[0,9,'green'],[9,9,'yellow'],[9,0,'blue']].forEach(([r,c,k])=>{let e=cell(r+0,c+0,k+' home');e.style.gridRow=`${r+1}/span 6`;e.style.gridColumn=`${c+1}/span 6`;for(let i=0;i<4;i++){let d=document.createElement('div');d.className='dot';e.append(d)}});
+ path.forEach(([r,c],i)=>{let e=cell(r,c,'');e.style.background=safe.includes(i)?'#fef3c7':'#fff';e.dataset.path=i});
+ // center
+ let ce=cell(6,6,'center');ce.style.gridRow='7/span 3';ce.style.gridColumn='7/span 3';
+ // home lanes
+ for(let i=0;i<6;i++){[[7,1+i,'blue'],[1+i,7,'red'],[7,13-i,'yellow'],[13-i,7,'green']].forEach(([r,c,k])=>{let e=cell(r,c,k);e.style.border='1px solid #fff'})}
+ renderTokens();
+}
+function renderTokens(){
+ document.querySelectorAll('.token').forEach(e=>e.remove());
+ states.forEach((arr,p)=>arr.forEach((pos,t)=>{
+ let r,c;if(pos<0){let bases=[[2,2],[2,11],[11,11],[11,2]][p];r=bases[0]+(t>>1)*2;c=bases[1]+(t%2)*2}
+ else {let idx=(starts[p]+pos)%52;[r,c]=path[idx]}
+ let target=[...board.children].find(e=>e.classList.contains('cell')&&+e.dataset.path===((pos<0)?-999:(starts[p]+pos)%52));
+ if(pos>=0&&target){let el=document.createElement('button');el.className='token '+colors[p];el.title=names[p]+' token '+(t+1);el.onclick=()=>move(p,t);target.append(el)}
+ else if(pos<0){let base=document.querySelectorAll('.home')[p];let el=document.createElement('button');el.className='token '+colors[p];el.onclick=()=>move(p,t);let dots=base.querySelectorAll('.dot');dots[t].replaceWith(el)}
+ }));
+}
+function say(s){document.getElementById('log').textContent=s}
+function update(){document.getElementById('turn').textContent=names[turn]+"'s turn";document.getElementById('hint').textContent=rolled?`Dice: ${dice}. Apne highlighted player ke token par tap karein.`:'Dice roll karein.';document.getElementById('roll').disabled=rolled}
+document.getElementById('roll').onclick=()=>{if(rolled)return;dice=1+Math.floor(Math.random()*6);rolled=true;say(names[turn]+' rolled '+dice);update();let movable=states[turn].some(x=>x<0?dice===6:x+dice<=57);if(!movable){say('Koi legal move nahi. Turn skip.');setTimeout(next,700)}};
+function move(p,t){if(p!==turn||!rolled)return;let old=states[p][t];if(old<0&&dice!==6)return say('Token nikalne ke liye 6 chahiye.');if(old>=0&&old+dice>57)return say('Is token ko exact number chahiye.');states[p][t]=old<0?0:old+dice;
+ if(states[p][t]<57){let idx=(starts[p]+states[p][t])%52;if(!safe.includes(idx)){states.forEach((a,op)=>{if(op!==p)a.forEach((v,j)=>{if(v>=0&&v<52&&(starts[op]+v)%52===idx)states[op][j]=-1})})}}
+ renderTokens();if(states[p].every(x=>x===57)){say(names[p]+' wins! 🏆');rolled=false;document.getElementById('hint').textContent='Winner! New Game dabayein.';return}
+ if(dice!==6)next();else{rolled=false;say('6 mila! Extra turn.');update()}
+}
+function next(){rolled=false;turn=(turn+1)%count;while(turn>=count)turn=(turn+1)%count;update()}
+document.getElementById('new').onclick=reset;document.getElementById('mode').onclick=()=>alert('Online multiplayer ke liye server/room system agle phase mein add hoga.');reset();
+</script></body></html>
